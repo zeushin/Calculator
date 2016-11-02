@@ -12,18 +12,36 @@ class CalculatorBrain {
     enum Operation {
         case constant(Double)
         case unaryOperation((Double) -> Double)
-        case binaryOperation
+        case binaryOperation((Double, Double) -> Double)
         case equals
     }
     
-    private var accumulator = 0.0
+    struct PendingBinaryOperationInfo {
+        var binaryFuction: (Double, Double) -> Double
+        var firstOperand: Double
+    }
     
-    var operations: Dictionary<String, Operation> = [
+    private var accumulator = 0.0
+    private var pending: PendingBinaryOperationInfo?
+    
+    private var operations: Dictionary<String, Operation> = [
         "π": .constant(M_PI),
         "e": .constant(M_E),
         "√": .unaryOperation(sqrt),
-        "cos": .unaryOperation(cos)
+        "cos": .unaryOperation(cos),
+        "+": .binaryOperation({ $0 + $1 }),
+        "−": .binaryOperation({ $0 - $1 }),
+        "×": .binaryOperation({ $0 * $1 }),
+        "÷": .binaryOperation({ $0 / $1 }),
+        "=": .equals
     ]
+    
+    private func excutePendingBinaryOperation() {
+        if let info = pending {
+            accumulator = info.binaryFuction(info.firstOperand, accumulator)
+            pending = nil
+        }
+    }
     
     func setOperand(operand: Double) {
         accumulator = operand
@@ -36,10 +54,11 @@ class CalculatorBrain {
                 accumulator = value
             case .unaryOperation(let function):
                 accumulator = function(accumulator)
-            case .binaryOperation:
-                break
+            case .binaryOperation(let function):
+                excutePendingBinaryOperation()
+                pending = PendingBinaryOperationInfo(binaryFuction: function, firstOperand: accumulator)
             case .equals:
-                break
+                excutePendingBinaryOperation()
             }
         }
     }
